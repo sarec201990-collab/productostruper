@@ -45,3 +45,12 @@ export function getOrCreateVisitorSession(): VisitorSession {
 
   return newSession;
 }
+
+export function resetVisitorSession(): VisitorSession {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch (e) {
+    console.warn('Could not reset visitor session:', e);
+  }
+  return getOrCreateVisitorSession();
+}

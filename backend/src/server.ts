@@ -5,7 +5,14 @@ import fs from 'node:fs';
 import https from 'node:https';
 import { searchProducts, getProductByCode, getBrands, getFamilies } from './db.js';
 import { securityHeaders, rateLimiter } from './security.js';
-import { sendDirectMessageToChatSystem, getClientMessages } from './chat_bridge.js';
+import { 
+  sendDirectMessageToChatSystem, 
+  getClientMessages, 
+  getActiveConversations, 
+  endConversation, 
+  sendReplyFromMostrador, 
+  getClientSessionStatus 
+} from './chat_bridge.js';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 5088;
@@ -195,18 +202,77 @@ app.post('/api/v1/chat/direct-message', apiLimiter, (req: Request, res: Response
 });
 
 // Get messages for a client session in the chat widget
-app.get('/api/v1/chat/messages', apiLimiter, (req: Request, res: Response) => {
+app.get(['/api/v1/chat/messages', '/api/v1/chat/messages/:clientId'], apiLimiter, (req: Request, res: Response) => {
   try {
-    const clientId = req.query.clientId as string;
+    const rawParam = Array.isArray(req.params.clientId) ? req.params.clientId[0] : req.params.clientId;
+    const rawQuery = Array.isArray(req.query.clientId) ? req.query.clientId[0] : (req.query.clientId as string);
+    const clientId = String(rawParam || rawQuery || '').trim();
     if (!clientId) {
       res.json({ success: true, ok: true, messages: [] });
       return;
     }
     const messages = getClientMessages(clientId);
-    res.json({ success: true, ok: true, messages });
+    const sessionInfo = getClientSessionStatus(clientId);
+    res.json({ success: true, ok: true, messages, session: sessionInfo });
   } catch (error: any) {
     console.error('Error fetching chat messages:', error);
     res.status(500).json({ error: 'Error al obtener mensajes del chat' });
+  }
+});
+
+// Active conversations list (only status = 'active')
+app.get('/api/v1/chat/active-conversations', apiLimiter, (req: Request, res: Response) => {
+  try {
+    const conversations = getActiveConversations();
+    res.json({ success: true, ok: true, conversations });
+  } catch (error: any) {
+    console.error('Error fetching active conversations:', error);
+    res.status(500).json({ error: 'Error al obtener conversaciones activas' });
+  }
+});
+
+// Session status check
+app.get('/api/v1/chat/session-status/:clientId', apiLimiter, (req: Request, res: Response) => {
+  try {
+    const rawParam = Array.isArray(req.params.clientId) ? req.params.clientId[0] : req.params.clientId;
+    const clientId = String(rawParam || '').trim();
+    const statusInfo = getClientSessionStatus(clientId);
+    res.json({ success: true, ok: true, ...statusInfo });
+  } catch (error: any) {
+    console.error('Error checking session status:', error);
+    res.status(500).json({ error: 'Error al consultar estado de sesión' });
+  }
+});
+
+// End / Close conversation (Fin de Chat)
+app.post('/api/v1/chat/end-conversation', apiLimiter, (req: Request, res: Response) => {
+  try {
+    const { clientId, closedBy } = req.body || {};
+    if (!clientId) {
+      res.status(400).json({ ok: false, error: 'clientId requerido' });
+      return;
+    }
+    const result = endConversation(clientId, closedBy === 'operator' ? 'operator' : 'client');
+    res.json(result);
+  } catch (error: any) {
+    console.error('Error ending conversation:', error);
+    res.status(500).json({ ok: false, error: 'Error al finalizar la conversación' });
+  }
+});
+
+// Operator / Mostrador reply
+app.post('/api/v1/chat/reply', apiLimiter, (req: Request, res: Response) => {
+  try {
+    const { clientId, message, senderName } = req.body || {};
+    if (!clientId || !message) {
+      res.status(400).json({ ok: false, error: 'Datos requeridos faltantes (clientId, message)' });
+      return;
+    }
+    const result = sendReplyFromMostrador({ clientId, message, senderName });
+    res.json(result);
+  } catch (error: any) {
+    console.error('Error sending reply from mostrador:', error);
+    res.status(500).json({ ok: false, error: 'Error al enviar respuesta' });
   }
 });
 
@@ -277,6 +343,17 @@ const server = app.listen(PORT, () => {
   console.log(`📡 Puerto Principal: http://localhost:${PORT}`);
   console.log(`🌐 Dominio público: https://${DOMAIN}`);
   console.log(`=======================================================`);
+
+  // Secondary port listener
+  try {
+    if (ALT_PORT !== PORT) {
+      app.listen(ALT_PORT, () => {
+        console.log(`📡 Puerto Secundario: http://localhost:${ALT_PORT}`);
+      }).on('error', (err: any) => {
+        console.warn(`[WARN] No se pudo abrir puerto secundario ${ALT_PORT}:`, err.message);
+      });
+    }
+  } catch {}
 
   // Pre-warm top 24 popular products images into local disk cache
   setTimeout(() => {

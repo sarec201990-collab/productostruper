@@ -19,9 +19,12 @@ try {
 }
 
 export interface DirectMessagePayload {
+  clientId?: string;
   name?: string;
+  deviceInfo?: string;
   phone?: string;
   message: string;
+  cartSummary?: string;
   productCode?: string;
   productClave?: string;
   productName?: string;
@@ -35,7 +38,7 @@ export interface DirectMessageResult {
 }
 
 export function sendDirectMessageToChatSystem(payload: DirectMessagePayload): DirectMessageResult {
-  const name = (payload.name || 'Cliente Web').trim();
+  const name = (payload.name || 'Visitante Web').trim();
   const rawMessage = (payload.message || '').trim();
 
   if (!rawMessage) {
@@ -48,14 +51,21 @@ export function sendDirectMessageToChatSystem(payload: DirectMessagePayload): Di
 
   const messageId = `msg_cat_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   const timestamp = new Date().toISOString();
+  const senderId = payload.clientId ? `usr_${payload.clientId}` : 'usr_truper_catalog';
 
   let formattedContent = `💬 *[ATENCIÓN DIRECTA · CATÁLOGO TRUPER]*\n`;
-  formattedContent += `👤 *Cliente:* ${name}\n`;
+  formattedContent += `👤 *Cliente:* ${name}${payload.deviceInfo ? ` (${payload.deviceInfo})` : ''}\n`;
+  if (payload.clientId) {
+    formattedContent += `🆔 *ID Sesión:* \`${payload.clientId}\`\n`;
+  }
+  if (payload.cartSummary) {
+    formattedContent += `🛒 *Cotización actual:* ${payload.cartSummary}\n`;
+  }
   if (payload.phone) {
-    formattedContent += `📱 *Teléfono/Contacto:* ${payload.phone.trim()}\n`;
+    formattedContent += `📱 *Contacto:* ${payload.phone.trim()}\n`;
   }
   if (payload.productClave || payload.productCode) {
-    formattedContent += `🔧 *Producto en consulta:* ${payload.productName || ''} (Clave: ${payload.productClave || ''} | Cód: ${payload.productCode || ''})\n`;
+    formattedContent += `🔧 *Producto:* ${payload.productName || ''} (Clave: ${payload.productClave || ''} | Cód: ${payload.productCode || ''})\n`;
   }
   formattedContent += `━━━━━━━━━━━━━━━━━━━━━\n`;
   formattedContent += `📝 *Mensaje:* ${rawMessage}`;
@@ -70,7 +80,7 @@ export function sendDirectMessageToChatSystem(payload: DirectMessagePayload): Di
 
       stmt.run(
         messageId,
-        'usr_truper_catalog',
+        senderId,
         `${name} (Catálogo)`,
         formattedContent,
         timestamp,
@@ -87,10 +97,11 @@ export function sendDirectMessageToChatSystem(payload: DirectMessagePayload): Di
       );
     }
 
+    const cleanAlias = encodeURIComponent(name);
     return {
       success: true,
       messageId,
-      chatUrl: `${CHAT_SYSTEM_URL}/?room=general&origin=catalogo_truper`
+      chatUrl: `${CHAT_SYSTEM_URL}/?room=general&origin=catalogo_truper&user=${cleanAlias}`
     };
   } catch (error: any) {
     console.error('[CHAT BRIDGE ERROR] Error al guardar mensaje en chat_system:', error);

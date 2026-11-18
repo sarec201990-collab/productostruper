@@ -171,11 +171,14 @@ app.get('/api/v1/image/:clave', (req: Request, res: Response) => {
 // Direct message endpoint to Flexivor Chat System
 app.post('/api/v1/chat/direct-message', apiLimiter, (req: Request, res: Response) => {
   try {
-    const { name, phone, message, productCode, productClave, productName } = req.body || {};
+    const { clientId, name, deviceInfo, phone, message, cartSummary, productCode, productClave, productName } = req.body || {};
     const result = sendDirectMessageToChatSystem({
+      clientId,
       name,
+      deviceInfo,
       phone,
       message,
+      cartSummary,
       productCode,
       productClave,
       productName

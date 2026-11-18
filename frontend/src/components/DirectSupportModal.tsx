@@ -1,21 +1,24 @@
-import React, { useState } from 'react';
-import { X, MessageCircle, Send, CheckCircle2, Loader2, ExternalLink, ShieldCheck, User, Phone } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, MessageCircle, Send, CheckCircle2, Loader2, ExternalLink, ShieldCheck, UserCheck } from 'lucide-react';
+import { getOrCreateVisitorSession, VisitorSession } from '../utils/visitorSession';
 
 interface DirectSupportModalProps {
   isOpen: boolean;
   onClose: () => void;
   sellerPhone?: string;
+  cartCount?: number;
+  cartTotal?: number;
   initialProduct?: { code: string; clave: string; name: string };
 }
 
 export const DirectSupportModal: React.FC<DirectSupportModalProps> = ({
   isOpen,
   onClose,
-  sellerPhone = '5215500000000',
+  cartCount = 0,
+  cartTotal = 0,
   initialProduct
 }) => {
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
+  const [session, setSession] = useState<VisitorSession | null>(null);
   const [message, setMessage] = useState(
     initialProduct
       ? `Hola, me interesa información sobre el producto ${initialProduct.name} (Clave: ${initialProduct.clave}). ¿Tienen disponibilidad?`
@@ -25,7 +28,18 @@ export const DirectSupportModal: React.FC<DirectSupportModalProps> = ({
   const [sentSuccess, setSentSuccess] = useState(false);
   const [chatUrl, setChatUrl] = useState('https://bridge.flexivor.com.mx/?room=general');
 
+  useEffect(() => {
+    if (isOpen) {
+      setSession(getOrCreateVisitorSession());
+      if (initialProduct) {
+        setMessage(`Hola, me interesa información sobre el producto ${initialProduct.name} (Clave: ${initialProduct.clave}). ¿Tienen disponibilidad?`);
+      }
+    }
+  }, [isOpen, initialProduct]);
+
   if (!isOpen) return null;
+
+  const currentSession = session || getOrCreateVisitorSession();
 
   const handleSendToChatSystem = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,13 +47,17 @@ export const DirectSupportModal: React.FC<DirectSupportModalProps> = ({
 
     setSending(true);
     try {
+      const cartSummary = cartCount > 0 ? `${cartCount} producto(s) por $${cartTotal.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN` : undefined;
+
       const res = await fetch('/api/v1/chat/direct-message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: name.trim() || 'Cliente Web',
-          phone: phone.trim(),
+          clientId: currentSession.clientId,
+          name: currentSession.clientAlias,
+          deviceInfo: currentSession.deviceInfo,
           message: message.trim(),
+          cartSummary,
           productCode: initialProduct?.code,
           productClave: initialProduct?.clave,
           productName: initialProduct?.name
@@ -59,11 +77,6 @@ export const DirectSupportModal: React.FC<DirectSupportModalProps> = ({
     } finally {
       setSending(false);
     }
-  };
-
-  const handleWhatsAppFallback = () => {
-    const text = encodeURIComponent(message);
-    window.open(`https://wa.me/${sellerPhone}?text=${text}`, '_blank');
   };
 
   return (
@@ -104,8 +117,8 @@ export const DirectSupportModal: React.FC<DirectSupportModalProps> = ({
                 <CheckCircle2 className="w-10 h-10" />
               </div>
               <h4 className="text-xl font-black text-gray-900">¡Mensaje Entregado!</h4>
-              <p className="text-xs sm:text-sm text-gray-600 max-w-sm mx-auto">
-                Tu solicitud ya llegó a la sala principal de los asesores en el <b>Sistema de Chat Flexivor</b>.
+              <p className="text-xs sm:text-sm text-gray-600 max-w-sm mx-auto leading-relaxed">
+                Tu solicitud fue recibida por los asesores con tu identificador anónimo <span className="font-extrabold text-[#0b2f68] bg-sky-50 px-2 py-0.5 rounded border border-sky-200">{currentSession.clientAlias}</span>.
               </p>
               
               <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -113,9 +126,9 @@ export const DirectSupportModal: React.FC<DirectSupportModalProps> = ({
                   href={chatUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full sm:w-auto px-5 py-3 rounded-xl bg-[#1456b8] hover:bg-[#10428e] text-white font-bold text-xs sm:text-sm shadow-md inline-flex items-center justify-center space-x-2"
+                  className="w-full sm:w-auto px-5 py-3 rounded-xl bg-[#1456b8] hover:bg-[#10428e] text-white font-bold text-xs sm:text-sm shadow-md inline-flex items-center justify-center space-x-2 transition-transform active:scale-95"
                 >
-                  <span>Abrir Chat en Vivo Flexivor</span>
+                  <span>Abrir Chat en Vivo</span>
                   <ExternalLink className="w-4 h-4" />
                 </a>
 
@@ -132,89 +145,62 @@ export const DirectSupportModal: React.FC<DirectSupportModalProps> = ({
             </div>
           ) : (
             <form onSubmit={handleSendToChatSystem} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">
-                  Tu Nombre o Razón Social:
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                    <User className="w-4 h-4" />
+              
+              {/* Anonymous Identification Banner */}
+              <div className="bg-sky-50/70 border border-sky-200/80 rounded-2xl p-3.5 flex items-start space-x-3">
+                <div className="p-2 bg-[#0b2f68] text-white rounded-xl mt-0.5">
+                  <UserCheck className="w-4 h-4 text-sky-300" />
+                </div>
+                <div className="flex-1 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-[#0b2f68] flex items-center space-x-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                      <span>Identificado como: {currentSession.clientAlias}</span>
+                    </span>
+                    <span className="text-[10px] font-semibold text-gray-500 bg-white px-2 py-0.5 rounded-full border border-gray-200">
+                      {currentSession.deviceInfo}
+                    </span>
                   </div>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Ej: Adrian / Ferretería San José"
-                    className="w-full pl-9 pr-3 py-2.5 text-xs sm:text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1456b8]/40 focus:bg-white"
-                  />
+                  <p className="text-gray-500 mt-1 leading-snug">
+                    No necesitas registrarte ni dejar tus datos personales. Tu consulta se envía y se identifica directamente en el chat.
+                  </p>
                 </div>
               </div>
 
+              {/* Message field */}
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">
-                  Teléfono / WhatsApp de contacto (opcional):
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                    <Phone className="w-4 h-4" />
-                  </div>
-                  <input
-                    type="text"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="Ej: 55 1234 5678"
-                    className="w-full pl-9 pr-3 py-2.5 text-xs sm:text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1456b8]/40 focus:bg-white"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">
-                  Mensaje o Consulta:
+                <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center justify-between">
+                  <span>Mensaje o Consulta:</span>
+                  <span className="text-[11px] font-normal text-gray-400">Atención directa</span>
                 </label>
                 <textarea
-                  rows={3}
+                  rows={4}
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   required
                   placeholder="Escribe aquí tu duda, pedido o consulta técnica..."
-                  className="w-full p-3 text-xs sm:text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1456b8]/40 focus:bg-white resize-none"
+                  className="w-full p-3.5 text-xs sm:text-sm bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#1456b8]/40 focus:bg-white resize-none leading-relaxed"
                 />
               </div>
 
-              {/* Action Buttons */}
-              <div className="pt-2 space-y-2">
+              {/* Action Button */}
+              <div className="pt-1">
                 <button
                   type="submit"
                   disabled={sending}
-                  className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-[#0b2f68] to-[#1456b8] hover:from-[#0a2754] hover:to-[#10428e] active:scale-98 text-white font-extrabold text-xs sm:text-sm shadow-md shadow-blue-900/20 flex items-center justify-center space-x-2 transition-all"
+                  className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-[#0b2f68] to-[#1456b8] hover:from-[#0a2754] hover:to-[#10428e] active:scale-98 text-white font-extrabold text-xs sm:text-sm shadow-md shadow-blue-900/20 flex items-center justify-center space-x-2 transition-all cursor-pointer"
                 >
                   {sending ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin text-white" />
-                      <span>Conectando con Chat System...</span>
+                      <span>Conectando con Asesor...</span>
                     </>
                   ) : (
                     <>
                       <Send className="w-4 h-4" />
-                      <span>Enviar Mensaje a Asesor Flexivor</span>
+                      <span>Enviar Mensaje Directo</span>
                     </>
                   )}
-                </button>
-
-                <div className="relative flex py-1 items-center">
-                  <div className="flex-grow border-t border-gray-200"></div>
-                  <span className="flex-shrink mx-2 text-[10px] text-gray-400 uppercase font-bold tracking-wider">o también</span>
-                  <div className="flex-grow border-t border-gray-200"></div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleWhatsAppFallback}
-                  className="w-full py-2.5 px-4 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold text-xs flex items-center justify-center space-x-2 transition-colors"
-                >
-                  <MessageCircle className="w-4 h-4 text-emerald-600 fill-emerald-600" />
-                  <span>Contactar directamente por WhatsApp</span>
                 </button>
               </div>
             </form>

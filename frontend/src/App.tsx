@@ -189,6 +189,7 @@ export const App: React.FC = () => {
   };
 
   const totalCartItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const totalCartPrice = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
 
   return (
     <div className="min-h-screen flex flex-col bg-[#f9fafb]">
@@ -332,6 +333,8 @@ export const App: React.FC = () => {
         isOpen={isSupportOpen}
         onClose={() => setIsSupportOpen(false)}
         sellerPhone={SELLER_WHATSAPP}
+        cartCount={totalCartItems}
+        cartTotal={totalCartPrice}
       />
 
       {/* Footer */}

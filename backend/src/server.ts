@@ -2,12 +2,25 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import path from 'node:path';
 import fs from 'node:fs';
+import https from 'node:https';
 import { searchProducts, getProductByCode, getBrands, getFamilies } from './db.js';
 import { securityHeaders, rateLimiter } from './security.js';
 
 const app = express();
 const PORT = process.env.PORT || 5051;
 const DOMAIN = process.env.DOMAIN || 'catalogo.flexivor.com.mx';
+const IMAGES_CACHE_DIR = path.resolve(import.meta.dirname, '../../data/images_cache');
+
+if (!fs.existsSync(IMAGES_CACHE_DIR)) {
+  fs.mkdirSync(IMAGES_CACHE_DIR, { recursive: true });
+}
+
+const FALLBACK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <rect width="200" height="200" fill="#f8fafc" rx="16"/>
+  <path d="M50 140l30-35 25 30 25-45 40 50H50z" fill="#cbd5e1"/>
+  <circle cx="75" cy="70" r="14" fill="#cbd5e1"/>
+  <text x="100" y="170" font-family="system-ui, sans-serif" font-size="12" fill="#94a3b8" text-anchor="middle" font-weight="bold">Foto Oficial Truper</text>
+</svg>`;
 
 // Apply security headers
 app.use(securityHeaders);
@@ -99,11 +112,58 @@ app.get('/api/v1/products', apiLimiter, (req: Request, res: Response) => {
     const limit = parseInt(req.query.limit as string || '24', 10);
 
     const result = searchProducts({ search, brand, family, page, limit });
+    
+    // Map product image URLs to use our high-speed local caching proxy
+    result.products = result.products.map(p => {
+      const cleanClave = p.clave.replace(/\//g, '-').replace(/\s+/g, '');
+      return {
+        ...p,
+        image_url: `/api/v1/image/${cleanClave}.jpg`
+      };
+    });
+
     res.json(result);
   } catch (error: any) {
     console.error('Error fetching products:', error);
     res.status(500).json({ error: 'Error al consultar productos del catálogo' });
   }
+});
+
+// High-Speed Image Proxy & Disk Cache for Truper CDN
+app.get('/api/v1/image/:clave', (req: Request, res: Response) => {
+  const rawClave = req.params.clave;
+  const rawStr = Array.isArray(rawClave) ? rawClave[0] : rawClave;
+  const clave = rawStr.replace(/[^a-zA-Z0-9_\-\.]/g, '');
+  const cleanClave = clave.endsWith('.jpg') ? clave : `${clave}.jpg`;
+  const localFilePath = path.join(IMAGES_CACHE_DIR, cleanClave);
+
+  // Aggressive caching: cache for 1 year in browser and Cloudflare edge CDN
+  res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+
+  // 1. Serve immediately from local SSD cache (< 2ms)
+  if (fs.existsSync(localFilePath)) {
+    res.setHeader('Content-Type', 'image/jpeg');
+    res.sendFile(localFilePath);
+    return;
+  }
+
+  // 2. Stream from Truper CDN and save to disk cache in background
+  const truperUrl = `https://www.truper.com/media/import/imagenes/${cleanClave}`;
+  
+  https.get(truperUrl, (truperRes) => {
+    if (truperRes.statusCode === 200) {
+      res.setHeader('Content-Type', 'image/jpeg');
+      const fileStream = fs.createWriteStream(localFilePath);
+      truperRes.pipe(fileStream);
+      truperRes.pipe(res);
+    } else {
+      res.setHeader('Content-Type', 'image/svg+xml');
+      res.send(FALLBACK_SVG);
+    }
+  }).on('error', (err) => {
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.send(FALLBACK_SVG);
+  });
 });
 
 // Single product by code
@@ -116,7 +176,11 @@ app.get('/api/v1/products/:code', apiLimiter, (req: Request, res: Response) => {
       res.status(404).json({ error: 'Producto no encontrado' });
       return;
     }
-    res.json(product);
+    const cleanClave = product.clave.replace(/\//g, '-').replace(/\s+/g, '');
+    res.json({
+      ...product,
+      image_url: `/api/v1/image/${cleanClave}.jpg`
+    });
   } catch (error: any) {
     console.error('Error fetching product:', error);
     res.status(500).json({ error: 'Error al consultar producto' });
@@ -169,4 +233,22 @@ app.listen(PORT, () => {
   console.log(`📡 Puerto: http://localhost:${PORT}`);
   console.log(`🌐 Dominio público: https://${DOMAIN}`);
   console.log(`=======================================================`);
+
+  // Pre-warm top 24 popular products images into local disk cache
+  setTimeout(() => {
+    try {
+      const initial = searchProducts({ page: 1, limit: 24 });
+      for (const p of initial.products) {
+        const cleanClave = p.clave.replace(/\//g, '-').replace(/\s+/g, '') + '.jpg';
+        const localPath = path.join(IMAGES_CACHE_DIR, cleanClave);
+        if (!fs.existsSync(localPath)) {
+          https.get(`https://www.truper.com/media/import/imagenes/${cleanClave}`, (res) => {
+            if (res.statusCode === 200) {
+              res.pipe(fs.createWriteStream(localPath));
+            }
+          }).on('error', () => {});
+        }
+      }
+    } catch {}
+  }, 1000);
 });

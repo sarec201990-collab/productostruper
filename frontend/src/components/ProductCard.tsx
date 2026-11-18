@@ -24,6 +24,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   onAddToCart,
   sellerPhone = '5215500000000'
 }) => {
+  const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [added, setAdded] = useState(false);
 
@@ -72,20 +73,34 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         </span>
       </div>
 
-      {/* Product Image */}
-      <div className="relative w-full aspect-square p-4 flex items-center justify-center bg-white overflow-hidden">
+      {/* Product Image with Shimmer Skeleton Loader */}
+      <div className="relative w-full aspect-square p-3 sm:p-4 flex items-center justify-center bg-white overflow-hidden">
+        {/* Skeleton placeholder while loading */}
+        {!imageLoaded && !imageError && (
+          <div className="absolute inset-4 bg-gradient-to-r from-gray-100 via-gray-200 to-gray-100 animate-pulse rounded-xl flex items-center justify-center">
+            <span className="text-[10px] font-mono text-gray-400 font-bold">{product.clave}</span>
+          </div>
+        )}
+
         {!imageError ? (
           <img
             src={product.image_url}
             alt={product.description}
             loading="lazy"
-            onError={() => setImageError(true)}
-            className="w-full h-full object-contain transform group-hover:scale-105 transition-transform duration-300"
+            decoding="async"
+            onLoad={() => setImageLoaded(true)}
+            onError={() => {
+              setImageError(true);
+              setImageLoaded(true);
+            }}
+            className={`w-full h-full object-contain transform group-hover:scale-105 transition-all duration-300 ${
+              imageLoaded ? 'opacity-100' : 'opacity-0'
+            }`}
           />
         ) : (
           <div className="w-full h-full rounded-xl bg-gray-50 border border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 p-4 text-center">
-            <ImageOff className="w-8 h-8 mb-2 stroke-1" />
-            <span className="text-xs font-medium">Foto oficial Truper</span>
+            <ImageOff className="w-8 h-8 mb-2 stroke-1 text-gray-300" />
+            <span className="text-xs font-medium text-gray-500">Foto oficial Truper</span>
             <span className="text-[10px] text-gray-400 font-mono mt-0.5">{product.clave}</span>
           </div>
         )}

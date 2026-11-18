@@ -8,7 +8,7 @@ set -e
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_DIR="$PROJECT_DIR/backend"
 FRONTEND_DIR="$PROJECT_DIR/frontend"
-PORT=5088
+PORT=5051
 
 echo "=========================================================="
 echo "🔧 INICIANDO CATÁLOGO DIGITAL TRUPER (FLEXIVOR)"

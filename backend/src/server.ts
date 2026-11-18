@@ -6,7 +6,7 @@ import { searchProducts, getProductByCode, getBrands, getFamilies } from './db.j
 import { securityHeaders, rateLimiter } from './security.js';
 
 const app = express();
-const PORT = process.env.PORT || 5088;
+const PORT = process.env.PORT || 5051;
 const DOMAIN = process.env.DOMAIN || 'catalogo.flexivor.com.mx';
 
 // Apply security headers

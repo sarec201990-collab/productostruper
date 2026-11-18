@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Product, CartItem, BrandInfo, ProductsResponse } from './types.js';
 import { Header } from './components/Header.js';
 import { SearchBar } from './components/SearchBar.js';
 import { FilterBar } from './components/FilterBar.js';
 import { ProductCard } from './components/ProductCard.js';
 import { CartDrawer } from './components/CartDrawer.js';
-import { ShoppingCart, Loader2, Sparkles, AlertCircle } from 'lucide-react';
+import { ShoppingCart, Loader2, Sparkles, AlertCircle, ArrowUp } from 'lucide-react';
 
 const SELLER_WHATSAPP = '5215500000000'; // Número predeterminado o configurable
 
@@ -22,6 +22,9 @@ export const App: React.FC = () => {
   const [totalResults, setTotalResults] = useState(0);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  const observerTarget = useRef<HTMLDivElement>(null);
 
   // Cart state persisted in localStorage
   const [cart, setCart] = useState<CartItem[]>(() => {
@@ -34,6 +37,15 @@ export const App: React.FC = () => {
   });
 
   const [isCartOpen, setIsCartOpen] = useState(false);
+
+  // Track window scroll for "Scroll to Top" button
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 400);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Save cart changes
   useEffect(() => {
@@ -72,13 +84,18 @@ export const App: React.FC = () => {
       if (debouncedSearch) params.set('search', debouncedSearch);
       if (selectedBrand && selectedBrand !== 'Todas') params.set('brand', selectedBrand);
       params.set('page', currentPage.toString());
-      params.set('limit', '24');
+      params.set('limit', '40'); // Load 40 items per batch for smoother continuous scrolling
 
       const res = await fetch(`/api/v1/products?${params.toString()}`);
       const data: ProductsResponse = await res.json();
 
       if (isAppend) {
-        setProducts((prev) => [...prev, ...(data.products || [])]);
+        setProducts((prev) => {
+          // Avoid duplicates by checking existing IDs
+          const existingIds = new Set(prev.map(p => p.id));
+          const newItems = (data.products || []).filter(p => !existingIds.has(p.id));
+          return [...prev, ...newItems];
+        });
       } else {
         setProducts(data.products || []);
       }
@@ -98,12 +115,33 @@ export const App: React.FC = () => {
     fetchProducts(1, false);
   }, [debouncedSearch, selectedBrand, fetchProducts]);
 
-  const handleLoadMore = () => {
-    if (page < totalPages && !loadingMore) {
-      const nextPage = page + 1;
-      setPage(nextPage);
-      fetchProducts(nextPage, true);
+  // Auto Infinite Scroll with IntersectionObserver (No click required)
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && page < totalPages && !loading && !loadingMore) {
+          const nextPage = page + 1;
+          setPage(nextPage);
+          fetchProducts(nextPage, true);
+        }
+      },
+      { threshold: 0.1, rootMargin: '400px' } // Preload 400px before user hits bottom
+    );
+
+    const currentTarget = observerTarget.current;
+    if (currentTarget) {
+      observer.observe(currentTarget);
     }
+
+    return () => {
+      if (currentTarget) {
+        observer.unobserve(currentTarget);
+      }
+    };
+  }, [page, totalPages, loading, loadingMore, fetchProducts]);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // Sort products client-side for immediate responsive feeling
@@ -231,28 +269,34 @@ export const App: React.FC = () => {
               ))}
             </div>
 
-            {/* Load More Button */}
-            {page < totalPages && (
-              <div className="mt-10 mb-8 text-center">
-                <button
-                  onClick={handleLoadMore}
-                  disabled={loadingMore}
-                  className="px-6 py-3.5 rounded-2xl bg-white border border-gray-300 hover:border-orange-500 text-gray-800 font-bold text-sm shadow-sm hover:shadow-md transition-all active:scale-95 inline-flex items-center space-x-2"
-                >
-                  {loadingMore ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin text-orange-500" />
-                      <span>Cargando más productos...</span>
-                    </>
-                  ) : (
-                    <span>Cargar más productos ({products.length} de {totalResults.toLocaleString()})</span>
-                  )}
-                </button>
-              </div>
-            )}
+            {/* Auto Infinite Scroll Sentinel & Status */}
+            <div ref={observerTarget} className="mt-8 mb-12 flex flex-col items-center justify-center text-center min-h-[60px]">
+              {loadingMore && (
+                <div className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-full bg-white border border-[#dce4ec] shadow-sm text-xs font-bold text-[#1456b8]">
+                  <Loader2 className="w-4 h-4 animate-spin text-[#f07d00]" />
+                  <span>Cargando más productos automáticamente...</span>
+                </div>
+              )}
+              {!loadingMore && page >= totalPages && products.length > 0 && (
+                <div className="text-center py-4 text-xs font-semibold text-gray-400">
+                  <span>✓ Has explorado los {totalResults.toLocaleString()} productos de este catálogo</span>
+                </div>
+              )}
+            </div>
           </>
         )}
       </main>
+
+      {/* Floating Scroll to Top Button */}
+      {showScrollTop && (
+        <button
+          onClick={scrollToTop}
+          className="fixed bottom-24 right-6 sm:bottom-8 sm:right-8 z-30 p-3.5 bg-white/95 text-[#0b2f68] hover:text-[#f07d00] rounded-full shadow-lg border border-[#dce4ec] backdrop-blur-sm active:scale-90 transition-all hover:shadow-xl"
+          title="Volver arriba"
+        >
+          <ArrowUp className="w-5 h-5 stroke-[2.5]" />
+        </button>
+      )}
 
       {/* Floating Action Button for Mobile Cart */}
       {totalCartItems > 0 && (

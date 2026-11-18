@@ -34,7 +34,60 @@ export interface DirectMessageResult {
   success: boolean;
   messageId?: string;
   chatUrl: string;
+  message?: {
+    id: string;
+    senderId: string;
+    senderName: string;
+    content: string;
+    timestamp: string;
+    isFromMe: boolean;
+  };
   error?: string;
+}
+
+export interface ClientChatMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  content: string;
+  timestamp: string;
+  isFromMe: boolean;
+  type: string;
+}
+
+export function getClientMessages(clientId: string): ClientChatMessage[] {
+  if (!chatDb || !clientId) {
+    return [];
+  }
+
+  const senderId = `usr_${clientId}`;
+
+  try {
+    const stmt = chatDb.prepare(`
+      SELECT id, senderId, senderName, content, timestamp, type, recipientId
+      FROM messages
+      WHERE senderId = ? 
+         OR recipientId = ?
+         OR (recipientId IS NULL AND content LIKE ?)
+      ORDER BY timestamp ASC
+      LIMIT 100
+    `);
+
+    const rows = stmt.all(senderId, senderId, `%${clientId}%`) as any[];
+
+    return rows.map((row) => ({
+      id: row.id,
+      senderId: row.senderId,
+      senderName: row.senderName,
+      content: row.content,
+      timestamp: row.timestamp,
+      isFromMe: row.senderId === senderId,
+      type: row.type || 'text'
+    }));
+  } catch (err) {
+    console.error('[CHAT BRIDGE ERROR] Error al consultar mensajes del cliente:', err);
+    return [];
+  }
 }
 
 export function sendDirectMessageToChatSystem(payload: DirectMessagePayload): DirectMessageResult {
@@ -101,7 +154,15 @@ export function sendDirectMessageToChatSystem(payload: DirectMessagePayload): Di
     return {
       success: true,
       messageId,
-      chatUrl: `${CHAT_SYSTEM_URL}/?room=general&origin=catalogo_truper&user=${cleanAlias}`
+      chatUrl: `${CHAT_SYSTEM_URL}/?room=general&origin=catalogo_truper&user=${cleanAlias}`,
+      message: {
+        id: messageId,
+        senderId,
+        senderName: name,
+        content: rawMessage,
+        timestamp,
+        isFromMe: true
+      }
     };
   } catch (error: any) {
     console.error('[CHAT BRIDGE ERROR] Error al guardar mensaje en chat_system:', error);

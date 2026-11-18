@@ -5,11 +5,10 @@ import fs from 'node:fs';
 import https from 'node:https';
 import { searchProducts, getProductByCode, getBrands, getFamilies } from './db.js';
 import { securityHeaders, rateLimiter } from './security.js';
-import { sendDirectMessageToChatSystem } from './chat_bridge.js';
+import { sendDirectMessageToChatSystem, getClientMessages } from './chat_bridge.js';
 
 const app = express();
-const PORT = Number(process.env.PORT) || 5051;
-const ALT_PORT = 5088;
+const PORT = Number(process.env.PORT) || 5088;
 const DOMAIN = process.env.DOMAIN || 'catalogo.flexivor.com.mx';
 const IMAGES_CACHE_DIR = path.resolve(import.meta.dirname, '../../data/images_cache');
 
@@ -195,6 +194,22 @@ app.post('/api/v1/chat/direct-message', apiLimiter, (req: Request, res: Response
   }
 });
 
+// Get messages for a client session in the chat widget
+app.get('/api/v1/chat/messages', apiLimiter, (req: Request, res: Response) => {
+  try {
+    const clientId = req.query.clientId as string;
+    if (!clientId) {
+      res.json({ success: true, ok: true, messages: [] });
+      return;
+    }
+    const messages = getClientMessages(clientId);
+    res.json({ success: true, ok: true, messages });
+  } catch (error: any) {
+    console.error('Error fetching chat messages:', error);
+    res.status(500).json({ error: 'Error al obtener mensajes del chat' });
+  }
+});
+
 // Single product by code
 app.get('/api/v1/products/:code', apiLimiter, (req: Request, res: Response) => {
   try {
@@ -262,15 +277,6 @@ const server = app.listen(PORT, () => {
   console.log(`📡 Puerto Principal: http://localhost:${PORT}`);
   console.log(`🌐 Dominio público: https://${DOMAIN}`);
   console.log(`=======================================================`);
-
-  // Also listen on ALT_PORT if available
-  try {
-    if (ALT_PORT !== PORT) {
-      app.listen(ALT_PORT, () => {
-        console.log(`📡 Puerto Secundario: http://localhost:${ALT_PORT}`);
-      }).on('error', () => {});
-    }
-  } catch {}
 
   // Pre-warm top 24 popular products images into local disk cache
   setTimeout(() => {

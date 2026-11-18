@@ -5,8 +5,8 @@ import { SearchBar } from './components/SearchBar.js';
 import { FilterBar } from './components/FilterBar.js';
 import { ProductCard } from './components/ProductCard.js';
 import { CartDrawer } from './components/CartDrawer.js';
-import { DirectSupportModal } from './components/DirectSupportModal.js';
-import { ShoppingCart, Loader2, Sparkles, AlertCircle, ArrowUp } from 'lucide-react';
+import { TruperChatWidget } from './components/TruperChatWidget.js';
+import { ShoppingCart, Loader2, Sparkles, AlertCircle, ArrowUp, MessageCircle } from 'lucide-react';
 
 const SELLER_WHATSAPP = '5215500000000'; // Número predeterminado o configurable
 
@@ -302,16 +302,36 @@ export const App: React.FC = () => {
         </button>
       )}
 
-      {/* Floating Action Button for Mobile Cart */}
+      {/* Floating Action Button for Mobile Cart (shifted if chat FAB is present) */}
       {totalCartItems > 0 && (
-        <div className="fixed bottom-6 right-6 z-30 sm:hidden">
+        <div className="fixed bottom-24 right-6 z-30 sm:hidden">
           <button
             onClick={() => setIsCartOpen(true)}
-            className="p-4 bg-orange-500 text-white rounded-full shadow-2xl flex items-center justify-center space-x-2 active:scale-90 transition-transform"
+            className="p-3.5 bg-[#f07d00] text-white rounded-full shadow-2xl flex items-center justify-center space-x-2 active:scale-90 transition-transform border-2 border-white"
+            title="Ver pedido"
           >
-            <ShoppingCart className="w-6 h-6" />
-            <span className="bg-gray-900 text-white text-xs font-black rounded-full h-5 px-1.5 flex items-center justify-center">
+            <ShoppingCart className="w-5 h-5" />
+            <span className="bg-[#142230] text-white text-[11px] font-black rounded-full h-5 min-w-[20px] px-1 flex items-center justify-center">
               {totalCartItems}
+            </span>
+          </button>
+        </div>
+      )}
+
+      {/* Floating Action Button for Truper Live Chat */}
+      {!isSupportOpen && (
+        <div className="fixed bottom-6 right-6 z-40">
+          <button
+            onClick={() => setIsSupportOpen(true)}
+            className="group flex items-center space-x-2 bg-[#e52421] hover:bg-[#c91d1a] text-white px-4 py-3.5 rounded-full shadow-2xl hover:shadow-red-500/30 transition-all active:scale-95 border-2 border-white cursor-pointer"
+            title="Envíenos un mensaje"
+          >
+            <div className="relative">
+              <MessageCircle className="w-6 h-6 fill-white stroke-[#e52421]" />
+              <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-400 border-2 border-white rounded-full animate-pulse" />
+            </div>
+            <span className="hidden sm:inline-block font-bold text-xs sm:text-sm tracking-tight pr-1">
+              Envíenos un mensaje
             </span>
           </button>
         </div>
@@ -328,11 +348,10 @@ export const App: React.FC = () => {
         sellerPhone={SELLER_WHATSAPP}
       />
 
-      {/* Direct Support Modal (Flexivor Chat System Bridge) */}
-      <DirectSupportModal
+      {/* Truper Live Chat Widget (Diseño exacto de la imagen) */}
+      <TruperChatWidget
         isOpen={isSupportOpen}
         onClose={() => setIsSupportOpen(false)}
-        sellerPhone={SELLER_WHATSAPP}
         cartCount={totalCartItems}
         cartTotal={totalCartPrice}
       />

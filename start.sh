@@ -5,10 +5,11 @@ set -e
 # INICIADOR DEL CATÁLOGO DIGITAL TRUPER · FLEXIVOR
 # ==============================================================================
 
+export PATH="/home/spanel20/.local/bin:$PATH"
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_DIR="$PROJECT_DIR/backend"
 FRONTEND_DIR="$PROJECT_DIR/frontend"
-PORT=5088
+PORT=5051
 
 echo "=========================================================="
 echo "🔧 INICIANDO CATÁLOGO DIGITAL TRUPER (FLEXIVOR)"
@@ -29,4 +30,4 @@ fi
 # 3. Iniciar servidor Backend
 echo "🚀 Arrancando servidor en http://localhost:$PORT..."
 cd "$BACKEND_DIR"
-node --experimental-sqlite dist/server.js
+PORT=$PORT node --experimental-sqlite dist/server.js

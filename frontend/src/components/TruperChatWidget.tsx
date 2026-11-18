@@ -78,6 +78,36 @@ export const TruperChatWidget: React.FC<TruperChatWidgetProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const lastKnownMsgIdRef = useRef<string | null>(null);
   const isFirstLoadRef = useRef(true);
+  const [viewportHeight, setViewportHeight] = useState<number | null>(null);
+
+  // Adaptación dinámica a teclados móviles (Android Gboard / iOS)
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleResize = () => {
+      if (window.visualViewport) {
+        setViewportHeight(window.visualViewport.height);
+      } else {
+        setViewportHeight(window.innerHeight);
+      }
+    };
+
+    handleResize();
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleResize);
+      window.visualViewport.addEventListener('scroll', handleResize);
+    }
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', handleResize);
+        window.visualViewport.removeEventListener('scroll', handleResize);
+      }
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [isOpen]);
 
   // Inicializar sesión de visitante
   useEffect(() => {
@@ -255,10 +285,17 @@ export const TruperChatWidget: React.FC<TruperChatWidgetProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed bottom-0 right-0 sm:bottom-6 sm:right-6 z-50 w-full sm:w-[390px] max-w-full animate-in fade-in slide-in-from-bottom-5 duration-200">
-      
+    <div 
+      className="fixed inset-x-0 bottom-0 sm:inset-auto sm:bottom-6 sm:right-6 z-50 w-full sm:w-[390px] max-w-full flex flex-col justify-end pointer-events-none"
+      style={{
+        height: viewportHeight ? `${viewportHeight}px` : undefined,
+        maxHeight: viewportHeight ? `${viewportHeight}px` : '100dvh'
+      }}
+    >
       {/* Contenedor Principal del Widget de Chat */}
-      <div className="relative bg-white sm:rounded-3xl rounded-t-3xl shadow-2xl border border-gray-200/90 overflow-hidden flex flex-col h-[570px] max-h-[92vh]">
+      <div 
+        className="relative bg-white sm:rounded-3xl rounded-t-3xl shadow-2xl border border-gray-200/90 overflow-hidden flex flex-col pointer-events-auto h-full sm:h-[570px] max-h-full sm:max-h-[570px] animate-in fade-in slide-in-from-bottom-5 duration-200"
+      >
         
         {/* Cabecera Roja Truper Mejorada (Degradado elegante con estado) */}
         <div className="relative bg-gradient-to-r from-[#e52421] via-[#ea2b28] to-[#d61e1b] text-white px-4 py-3.5 flex items-center justify-between shadow-md select-none">
@@ -433,6 +470,11 @@ export const TruperChatWidget: React.FC<TruperChatWidgetProps> = ({
                 type="text"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
+                onFocus={() => {
+                  setTimeout(() => {
+                    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+                  }, 200);
+                }}
                 placeholder="Escriba aquí..."
                 className="flex-1 bg-transparent text-xs sm:text-sm text-gray-900 placeholder-gray-400 focus:outline-none py-1.5"
               />

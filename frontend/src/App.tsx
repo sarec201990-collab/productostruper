@@ -6,6 +6,7 @@ import { FilterBar } from './components/FilterBar.js';
 import { ProductCard } from './components/ProductCard.js';
 import { CartDrawer } from './components/CartDrawer.js';
 import { TruperChatWidget } from './components/TruperChatWidget.js';
+import { StartupSplash } from './components/StartupSplash.js';
 import { ShoppingCart, Loader2, Sparkles, AlertCircle, ArrowUp, MessageCircle } from 'lucide-react';
 
 const SELLER_WHATSAPP = '5215500000000'; // Número predeterminado o configurable
@@ -193,6 +194,9 @@ export const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#f9fafb]">
+      {/* Startup Intro Splash (Ecosistema Flexivor) */}
+      <StartupSplash />
+
       {/* Header */}
       <Header
         totalCartItems={totalCartItems}

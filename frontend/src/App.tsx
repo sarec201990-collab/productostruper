@@ -5,6 +5,7 @@ import { SearchBar } from './components/SearchBar.js';
 import { FilterBar } from './components/FilterBar.js';
 import { ProductCard } from './components/ProductCard.js';
 import { CartDrawer } from './components/CartDrawer.js';
+import { DirectSupportModal } from './components/DirectSupportModal.js';
 import { ShoppingCart, Loader2, Sparkles, AlertCircle, ArrowUp } from 'lucide-react';
 
 const SELLER_WHATSAPP = '5215500000000'; // Número predeterminado o configurable
@@ -37,6 +38,7 @@ export const App: React.FC = () => {
   });
 
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isSupportOpen, setIsSupportOpen] = useState(false);
 
   // Track window scroll for "Scroll to Top" button
   useEffect(() => {
@@ -194,6 +196,7 @@ export const App: React.FC = () => {
       <Header
         totalCartItems={totalCartItems}
         onOpenCart={() => setIsCartOpen(true)}
+        onOpenSupport={() => setIsSupportOpen(true)}
         sellerPhone={SELLER_WHATSAPP}
       />
 
@@ -321,6 +324,13 @@ export const App: React.FC = () => {
         onUpdateQuantity={handleUpdateQuantity}
         onRemoveItem={handleRemoveFromCart}
         onClearCart={handleClearCart}
+        sellerPhone={SELLER_WHATSAPP}
+      />
+
+      {/* Direct Support Modal (Flexivor Chat System Bridge) */}
+      <DirectSupportModal
+        isOpen={isSupportOpen}
+        onClose={() => setIsSupportOpen(false)}
         sellerPhone={SELLER_WHATSAPP}
       />
 

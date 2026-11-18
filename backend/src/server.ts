@@ -5,9 +5,10 @@ import fs from 'node:fs';
 import https from 'node:https';
 import { searchProducts, getProductByCode, getBrands, getFamilies } from './db.js';
 import { securityHeaders, rateLimiter } from './security.js';
+import { sendDirectMessageToChatSystem } from './chat_bridge.js';
 
 const app = express();
-const PORT = process.env.PORT || 5051;
+const PORT = process.env.PORT || 5088;
 const DOMAIN = process.env.DOMAIN || 'catalogo.flexivor.com.mx';
 const IMAGES_CACHE_DIR = path.resolve(import.meta.dirname, '../../data/images_cache');
 
@@ -164,6 +165,30 @@ app.get('/api/v1/image/:clave', (req: Request, res: Response) => {
     res.setHeader('Content-Type', 'image/svg+xml');
     res.send(FALLBACK_SVG);
   });
+});
+
+// Direct message endpoint to Flexivor Chat System
+app.post('/api/v1/chat/direct-message', apiLimiter, (req: Request, res: Response) => {
+  try {
+    const { name, phone, message, productCode, productClave, productName } = req.body || {};
+    const result = sendDirectMessageToChatSystem({
+      name,
+      phone,
+      message,
+      productCode,
+      productClave,
+      productName
+    });
+
+    if (result.success) {
+      res.json(result);
+    } else {
+      res.status(400).json(result);
+    }
+  } catch (error: any) {
+    console.error('Error handling direct message:', error);
+    res.status(500).json({ error: 'Error al enviar mensaje a atención directa' });
+  }
 });
 
 // Single product by code

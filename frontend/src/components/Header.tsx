@@ -4,14 +4,11 @@ import { ShoppingCart, MessageCircle, ShieldCheck } from 'lucide-react';
 interface HeaderProps {
   totalCartItems: number;
   onOpenCart: () => void;
+  onOpenSupport: () => void;
   sellerPhone?: string;
 }
 
-export const Header: React.FC<HeaderProps> = ({ totalCartItems, onOpenCart, sellerPhone = '5215500000000' }) => {
-  const handleDirectWhatsAppContact = () => {
-    const text = encodeURIComponent('¡Hola! Estoy navegando en el Catálogo Digital Truper (Flexivor) y me gustaría solicitar información o asesoría general.');
-    window.open(`https://wa.me/${sellerPhone}?text=${text}`, '_blank');
-  };
+export const Header: React.FC<HeaderProps> = ({ totalCartItems, onOpenCart, onOpenSupport, sellerPhone = '5215500000000' }) => {
 
   return (
     <header className="sticky top-0 z-40 bg-[#0b2f68] text-white border-b border-[#1456b8]/50 shadow-md transition-all">
@@ -50,11 +47,11 @@ export const Header: React.FC<HeaderProps> = ({ totalCartItems, onOpenCart, sell
 
           {/* Action Buttons */}
           <div className="flex items-center space-x-2 sm:space-x-3">
-            {/* Direct WhatsApp Contact Button */}
+            {/* Direct Support Button (Chat System & WhatsApp) */}
             <button
-              onClick={handleDirectWhatsAppContact}
-              className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 border border-emerald-500 shadow-sm transition-all"
-              title="Atención por WhatsApp"
+              onClick={onOpenSupport}
+              className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 border border-emerald-500 shadow-sm transition-all active:scale-95"
+              title="Atención Directa con Asesor Flexivor"
             >
               <MessageCircle className="w-4 h-4 fill-white" />
               <span className="hidden md:inline">Atención Directa</span>

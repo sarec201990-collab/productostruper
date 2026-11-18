@@ -1,0 +1,24 @@
+# ==============================================================================
+# CLOUDFLARE TUNNEL CONFIGURATION · CATÁLOGO DIGITAL TRUPER
+# Dominio: flexivor.com.mx
+# ==============================================================================
+
+tunnel: d63178ce-a9bb-437f-ad81-b9a13937d353
+credentials-file: /home/spanel20/.cloudflared/d63178ce-a9bb-437f-ad81-b9a13937d353.json
+
+originRequest:
+  connectTimeout: 30s
+  tlsTimeout: 10s
+  tcpKeepAlive: 30s
+  keepAliveConnections: 100
+  keepAliveTimeout: 90s
+  http2Origin: true
+  noTLSVerify: true
+
+ingress:
+  # Subdominio de catálogo enlazado directamente al backend en puerto 5088
+  - hostname: catalogo.flexivor.com.mx
+    service: http://127.0.0.1:5088
+  - hostname: truper.flexivor.com.mx
+    service: http://127.0.0.1:5088
+  - service: http_status:404

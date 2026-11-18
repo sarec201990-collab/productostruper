@@ -8,7 +8,8 @@ import { securityHeaders, rateLimiter } from './security.js';
 import { sendDirectMessageToChatSystem } from './chat_bridge.js';
 
 const app = express();
-const PORT = process.env.PORT || 5088;
+const PORT = Number(process.env.PORT) || 5051;
+const ALT_PORT = 5088;
 const DOMAIN = process.env.DOMAIN || 'catalogo.flexivor.com.mx';
 const IMAGES_CACHE_DIR = path.resolve(import.meta.dirname, '../../data/images_cache');
 
@@ -252,12 +253,21 @@ function escapeHtml(text: string): string {
     .replace(/'/g, '&#039;');
 }
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`=======================================================`);
   console.log(`🚀 SERVIDOR CATÁLOGO TRUPER ACTIVO`);
-  console.log(`📡 Puerto: http://localhost:${PORT}`);
+  console.log(`📡 Puerto Principal: http://localhost:${PORT}`);
   console.log(`🌐 Dominio público: https://${DOMAIN}`);
   console.log(`=======================================================`);
+
+  // Also listen on ALT_PORT if available
+  try {
+    if (ALT_PORT !== PORT) {
+      app.listen(ALT_PORT, () => {
+        console.log(`📡 Puerto Secundario: http://localhost:${ALT_PORT}`);
+      }).on('error', () => {});
+    }
+  } catch {}
 
   // Pre-warm top 24 popular products images into local disk cache
   setTimeout(() => {

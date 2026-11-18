@@ -60,7 +60,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   return (
     <article
       id={`product-${product.code}`}
-      className="group bg-white rounded-2xl border border-gray-200/90 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between overflow-hidden hover:-translate-y-1"
+      className="group bg-white rounded-2xl border border-[#dce4ec] shadow-sm hover:border-[#1456b8]/50 hover:shadow-xl transition-all duration-300 flex flex-col justify-between overflow-hidden hover:-translate-y-1"
     >
       {/* Top Header: Brand & Clave */}
       <div className="p-3.5 pb-0 flex items-center justify-between">

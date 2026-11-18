@@ -159,18 +159,18 @@ export const App: React.FC = () => {
         sellerPhone={SELLER_WHATSAPP}
       />
 
-      {/* Hero Banner with Truper Official Aesthetics */}
-      <section className="bg-gradient-to-b from-gray-900 via-gray-900 to-gray-800 text-white pt-8 pb-10 px-4 text-center relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#f07d00_1px,transparent_1px)] [background-size:16px_16px]"></div>
+      {/* Hero Banner with Official Flexivor & Truper Aesthetics */}
+      <section className="bg-gradient-to-br from-[#0b2f68] via-[#10428e] to-[#1456b8] text-white pt-8 pb-10 px-4 text-center relative overflow-hidden shadow-inner">
+        <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#38bdf8_1px,transparent_1px)] [background-size:20px_20px]"></div>
         <div className="relative max-w-4xl mx-auto space-y-3">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-bold uppercase tracking-wider">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Catálogo Completo y Vigente</span>
+          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-[#38bdf8] text-xs font-bold uppercase tracking-wider backdrop-blur-sm">
+            <Sparkles className="w-3.5 h-3.5 text-[#f07d00]" />
+            <span>Catálogo Oficial Vigente · Flexivor</span>
           </div>
           <h1 className="text-3xl sm:text-5xl font-black tracking-tight leading-tight">
-            Herramientas <span className="text-orange-500">Truper</span> al Mejor Precio
+            Herramientas <span className="text-[#f07d00]">Truper</span> al Mejor Precio
           </h1>
-          <p className="text-sm sm:text-base text-gray-300 max-w-2xl mx-auto">
+          <p className="text-sm sm:text-base text-sky-100 max-w-2xl mx-auto font-medium">
             Explora más de 16,000 productos con precios públicos con IVA. Selecciona lo que necesitas y consulta o pide directamente por WhatsApp.
           </p>
         </div>
@@ -281,12 +281,13 @@ export const App: React.FC = () => {
       />
 
       {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 py-8 px-4 text-center text-xs text-gray-500 space-y-2">
-        <p className="font-semibold text-gray-700">
-          Catálogo Digital Truper · Todos los derechos reservados · Flexivor
-        </p>
+      <footer className="bg-white border-t border-[#dce4ec] py-8 px-4 text-center text-xs text-[#5d6c7b] space-y-3">
+        <div className="flex items-center justify-center space-x-2">
+          <img src="/icons/logo-flexivor-web.png" alt="Flexivor" className="h-6 w-auto object-contain opacity-80" />
+          <span className="font-bold text-[#142230]">Catálogo Digital Truper · Ecosistema Flexivor</span>
+        </div>
         <p className="text-gray-400">
-          Precios sujetos a cambio sin previo aviso. Imágenes oficiales propiedad de Truper, S.A. de C.V.
+          Precios con IVA vigentes sujetos a cambio sin previo aviso. Imágenes oficiales propiedad de Truper, S.A. de C.V.
         </p>
       </footer>
     </div>
